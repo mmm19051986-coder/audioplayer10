@@ -29,9 +29,14 @@ body{
   justify-content:center;
 }
 
-/* UI */
+/* ---------- UI ---------- */
 h3{margin:4px 0 12px}
-label{font-size:13px;opacity:.7;margin-top:10px;display:block}
+label{
+  font-size:13px;
+  opacity:.7;
+  margin-top:10px;
+  display:block
+}
 input,textarea,select,button{
   width:100%;
   margin-top:6px;
@@ -40,7 +45,12 @@ input,textarea,select,button{
   border:none;
   box-sizing:border-box;
 }
-textarea{background:#000;color:#00ff88;font-size:12px;height:110px}
+textarea{
+  background:#000;
+  color:#00ff88;
+  font-size:12px;
+  height:110px
+}
 button{
   background:#00ff88;
   color:#000;
@@ -49,7 +59,14 @@ button{
   margin-top:10px;
 }
 
-/* Presets */
+.mode{
+  display:flex;
+  gap:6px;
+  margin-bottom:10px;
+}
+.mode button{flex:1}
+
+/* ---------- Presets ---------- */
 .presets{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -70,7 +87,7 @@ button{
   opacity:1;
 }
 
-/* Player */
+/* ---------- Player ---------- */
 .player{
   width:280px;
   background:var(--bg);
@@ -91,7 +108,8 @@ button{
   margin:10px 0;
 }
 .ctrl button{
-  width:42px;height:42px;
+  width:42px;
+  height:42px;
   border-radius:50%;
   border:none;
   background:var(--accent);
@@ -111,14 +129,6 @@ button{
 .list div.active{
   color:var(--accent);
   opacity:1;
-}
-.mode{
-  display:flex;
-  gap:6px;
-  margin-bottom:10px;
-}
-.mode button{
-  flex:1;
 }
 </style>
 </head>
@@ -145,6 +155,11 @@ button{
   <label>MP3 / GitHub raw</label>
   <textarea id="tracks"></textarea>
 
+  <label>
+    <input type="checkbox" id="glowToggle">
+    ✨ Neon glow
+  </label>
+
   <button onclick="update()">Получить код</button>
   <textarea id="code" placeholder="Код для Genially"></textarea>
 </div>
@@ -152,15 +167,17 @@ button{
 <div id="preview"></div>
 
 <script>
+/* ---------- PRESETS ---------- */
 const PRESETS={
-  spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20},
-  neon:{name:"Neon",accent:"#00faff",bg:"rgba(0,0,0,.35)",blur:20,radius:24},
-  minimal:{name:"Minimal",accent:"#4a90e2",bg:"rgba(255,255,255,.12)",blur:6,radius:14},
-  soft:{name:"Soft Glass",accent:"#ff9ecb",bg:"rgba(255,255,255,.18)",blur:10,radius:22}
+  spotify:{name:"Spotify",accent:"#1db954",bg:"rgba(255,255,255,.08)",blur:14,radius:20,glow:false},
+  neon:{name:"Neon",accent:"#00faff",bg:"rgba(0,0,0,.35)",blur:20,radius:24,glow:true},
+  minimal:{name:"Minimal",accent:"#4a90e2",bg:"rgba(255,255,255,.12)",blur:6,radius:14,glow:false},
+  soft:{name:"Soft Glass",accent:"#ff9ecb",bg:"rgba(255,255,255,.18)",blur:10,radius:22,glow:false}
 };
 
 let current={preset:"spotify"};
 
+/* ---------- UI ---------- */
 function buildPresets(){
   presets.innerHTML="";
   Object.entries(PRESETS).forEach(([k,p])=>{
@@ -176,14 +193,26 @@ function applyPreset(key){
   current.preset=key;
   Object.assign(current,PRESETS[key]);
   accent.value=current.accent;
+  glowToggle.checked=!!current.glow;
   buildPresets();
   update();
 }
 
+/* ---------- PLAYER ---------- */
 function renderPlayer(target,cfg){
+  const glowStyle = cfg.glow
+    ? `box-shadow:0 0 20px ${cfg.accent},0 0 40px ${cfg.accent}55;`
+    : `box-shadow:none;`;
+
   target.innerHTML=`
   <div class="player"
-    style="--accent:${cfg.accent};--bg:${cfg.bg};--blur:${cfg.blur}px;--radius:${cfg.radius}px">
+    style="
+      --accent:${cfg.accent};
+      --bg:${cfg.bg};
+      --blur:${cfg.blur}px;
+      --radius:${cfg.radius}px;
+      ${glowStyle}
+    ">
     <img src="${cfg.cover}">
     <div id="title"></div>
     <input type="range" id="seek">
@@ -230,11 +259,13 @@ function renderPlayer(target,cfg){
   target.querySelector("#prev").onclick=()=>load((i-1+cfg.tracks.length)%cfg.tracks.length,true);
 }
 
+/* ---------- UPDATE ---------- */
 function update(){
   Object.assign(current,{
     accent:accent.value,
     cover:cover.value,
-    tracks:tracks.value.trim().split("\n").filter(Boolean)
+    tracks:tracks.value.trim().split("\n").filter(Boolean),
+    glow:glowToggle.checked
   });
 
   renderPlayer(preview,current);
@@ -250,10 +281,12 @@ function setMode(m){
   panel.style.display=m==="player"?"none":"block";
 }
 
+/* ---------- INIT ---------- */
 const presets=document.getElementById("presets");
 const accent=document.getElementById("accent");
 const cover=document.getElementById("cover");
 const tracks=document.getElementById("tracks");
+const glowToggle=document.getElementById("glowToggle");
 const preview=document.getElementById("preview");
 const code=document.getElementById("code");
 
