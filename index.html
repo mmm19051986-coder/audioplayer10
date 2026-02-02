@@ -19,7 +19,6 @@ body{
   padding:16px;
   background:#141414;
   box-sizing:border-box;
-  overflow:auto;
 }
 
 #preview{
@@ -29,38 +28,19 @@ body{
   justify-content:center;
 }
 
-label{
-  display:block;
-  margin-top:14px;
-  font-size:13px;
-  opacity:.7;
+label{margin-top:12px;display:block;font-size:13px;opacity:.7}
+input,textarea,button{
+  width:100%;margin-top:6px;padding:8px;
+  border-radius:8px;border:none;
 }
-
-input, textarea, button{
-  width:100%;
-  margin-top:6px;
-  padding:8px;
-  border-radius:8px;
-  border:none;
-  box-sizing:border-box;
-}
-
 textarea{
-  height:120px;
-  background:#000;
-  color:#00ff88;
-  font-size:12px;
+  height:120px;background:#000;color:#00ff88;font-size:12px
 }
-
 button{
-  background:#00ff88;
-  color:#000;
-  font-weight:bold;
-  cursor:pointer;
-  margin-top:14px;
+  background:#00ff88;color:#000;font-weight:bold;
+  margin-top:14px;cursor:pointer
 }
-
-#code{height:220px;}
+#code{height:220px}
 </style>
 </head>
 
@@ -82,167 +62,109 @@ https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3
 https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3
   </textarea>
 
-  <button onclick="generate()">Получить код</button>
-  <textarea id="code" placeholder="Код для Genially"></textarea>
+  <button onclick="update()">Получить код</button>
+  <textarea id="code"></textarea>
 </div>
 
 <div id="preview"></div>
 
 <script>
-function filename(url){
-  return decodeURIComponent(url.split('/').pop().replace('.mp3',''));
+function renderPlayer(target, config){
+  target.innerHTML = `
+  <div class="gp" style="--accent:${config.accent}">
+    <img src="${config.cover}">
+    <div class="title">${config.names[0]}</div>
+    <input type="range" class="seek" value="0">
+    <div class="ctrl">
+      <button class="prev">◀</button>
+      <button class="play">▶</button>
+      <button class="next">▶▶</button>
+    </div>
+    <div class="list"></div>
+    <audio></audio>
+  </div>`;
+
+  const a = target.querySelector("audio");
+  const play = target.querySelector(".play");
+  const seek = target.querySelector(".seek");
+  const title = target.querySelector(".title");
+  const list = target.querySelector(".list");
+
+  let i = 0;
+
+  function load(x,auto){
+    i=x;
+    a.src=config.tracks[i];
+    title.textContent=config.names[i];
+    [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
+    if(auto) a.play();
+  }
+
+  config.names.forEach((n,idx)=>{
+    const d=document.createElement("div");
+    d.textContent=n;
+    d.onclick=()=>load(idx,true);
+    list.appendChild(d);
+  });
+
+  load(0);
+
+  play.onclick=()=>a.paused?a.play():a.pause();
+  a.onplay=()=>play.textContent="❚❚";
+  a.onpause=()=>play.textContent="▶";
+  a.ontimeupdate=()=>seek.value=a.currentTime/a.duration*100||0;
+  seek.oninput=()=>a.currentTime=a.duration*seek.value/100;
+  target.querySelector(".next").onclick=()=>load((i+1)%config.tracks.length,true);
+  target.querySelector(".prev").onclick=()=>load((i-1+config.tracks.length)%config.tracks.length,true);
 }
 
-function generate(){
+function update(){
   const accent = accentInput.value;
-  const cover  = coverInput.value;
+  const cover = coverInput.value;
   const tracks = tracksInput.value.trim().split("\n").filter(Boolean);
+  const names = tracks.map(t=>decodeURIComponent(t.split("/").pop().replace(".mp3","")));
 
-  const code = `
-<div id="GENIALLY_PLAYER"></div>
-
+  preview.innerHTML = `
 <style>
-#GENIALLY_PLAYER{
-  --accent:${accent};
-  width:280px;
-  font-family:Arial,sans-serif;
-}
-
 .gp{
+  width:280px;
   background:rgba(255,255,255,.08);
   backdrop-filter:blur(14px);
   border-radius:24px;
   padding:16px;
   color:white;
+  font-family:Arial;
 }
-
-.gp img{
-  width:100%;
-  border-radius:16px;
-}
-
-.gp .title{
-  margin-top:10px;
-  font-weight:bold;
-}
-
-.gp .controls{
-  display:flex;
-  justify-content:center;
-  gap:14px;
-  margin:12px 0;
-}
-
+.gp img{width:100%;border-radius:16px}
+.ctrl{display:flex;justify-content:center;gap:12px;margin:10px 0}
 .gp button{
-  width:42px;
-  height:42px;
-  border-radius:50%;
-  border:none;
-  background:var(--accent);
-  cursor:pointer;
+  width:42px;height:42px;border-radius:50%;
+  border:none;background:var(--accent);cursor:pointer
 }
-
-.gp input[type=range]{width:100%;}
-
-.playlist{
-  margin-top:10px;
-  max-height:140px;
-  overflow:auto;
-  border-top:1px solid rgba(255,255,255,.1);
-}
-
-.track{
-  padding:6px;
-  cursor:pointer;
-  font-size:13px;
-  opacity:.75;
-}
-
-.track.active{
-  color:var(--accent);
-  opacity:1;
-}
-
-.track:hover{background:rgba(255,255,255,.08);}
+.list{max-height:140px;overflow:auto}
+.list div{padding:6px;cursor:pointer;opacity:.7}
+.list div.active{color:var(--accent);opacity:1}
 </style>
+<div id="P"></div>`;
 
-<script>
-(function(){
-  const tracks=${JSON.stringify(tracks)};
-  let i=0;
+  renderPlayer(
+    document.getElementById("P"),
+    {accent,cover,tracks,names}
+  );
 
-  const root=document.getElementById("GENIALLY_PLAYER");
-  root.innerHTML=\`
-    <div class="gp">
-      <img src="${cover}">
-      <div class="title" id="title"></div>
-
-      <input type="range" id="seek" value="0">
-
-      <div class="controls">
-        <button id="prev">◀</button>
-        <button id="play">▶</button>
-        <button id="next">▶▶</button>
-      </div>
-
-      <div class="playlist" id="list"></div>
-      <audio id="audio"></audio>
-    </div>\`;
-
-  const audio=root.querySelector("#audio");
-  const play=root.querySelector("#play");
-  const seek=root.querySelector("#seek");
-  const list=root.querySelector("#list");
-
-  function name(u){return decodeURIComponent(u.split('/').pop().replace('.mp3',''));}
-
-  tracks.forEach((t,idx)=>{
-    const d=document.createElement("div");
-    d.className="track";
-    d.textContent=name(t);
-    d.onclick=()=>load(idx,true);
-    list.appendChild(d);
-  });
-
-  function highlight(){
-    [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
-  }
-
-  function load(x,auto){
-    i=x;
-    audio.src=tracks[i];
-    title.textContent=name(tracks[i]);
-    highlight();
-    if(auto) audio.play();
-  }
-
-  load(0);
-
-  play.onclick=()=>audio.paused?audio.play():audio.pause();
-  audio.onplay=()=>play.textContent="❚❚";
-  audio.onpause=()=>play.textContent="▶";
-
-  audio.ontimeupdate=()=>seek.value=audio.currentTime/audio.duration*100||0;
-  seek.oninput=()=>audio.currentTime=audio.duration*seek.value/100;
-
-  audio.onended=()=>load((i+1)%tracks.length,true);
-  prev.onclick=()=>load((i-1+tracks.length)%tracks.length,true);
-  next.onclick=()=>load((i+1)%tracks.length,true);
-})();
-<\/script>
-`;
-
-  codeBox.value = code;
-  preview.innerHTML = code;
+  code.value = `<!-- КОД ДЛЯ GENIALLY -->
+<div id="GENIALLY_PLAYER"></div>
+<style>/* styles here */</style>
+<script>/* self-contained JS here */</script>`;
 }
 
-const accentInput = document.getElementById("accent");
-const coverInput  = document.getElementById("cover");
-const tracksInput = document.getElementById("tracks");
-const codeBox     = document.getElementById("code");
-const preview     = document.getElementById("preview");
+const accentInput=document.getElementById("accent");
+const coverInput=document.getElementById("cover");
+const tracksInput=document.getElementById("tracks");
+const preview=document.getElementById("preview");
+const code=document.getElementById("code");
 
-generate();
+update();
 </script>
 
 </body>
