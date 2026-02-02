@@ -7,8 +7,8 @@
 <style>
 body{
   margin:0;
-  font-family:Arial, sans-serif;
-  background:#0f0f0f;
+  font-family:Arial,sans-serif;
+  background:#0e0e0e;
   color:#fff;
   display:flex;
   height:100vh;
@@ -17,7 +17,7 @@ body{
 #editor{
   width:360px;
   padding:16px;
-  background:#151515;
+  background:#141414;
   box-sizing:border-box;
   overflow:auto;
 }
@@ -27,17 +27,16 @@ body{
   display:flex;
   align-items:center;
   justify-content:center;
-  background:transparent;
 }
 
 label{
-  font-size:13px;
-  opacity:.7;
   display:block;
   margin-top:14px;
+  font-size:13px;
+  opacity:.7;
 }
 
-input, textarea, select, button{
+input, textarea, button{
   width:100%;
   margin-top:6px;
   padding:8px;
@@ -61,9 +60,7 @@ button{
   margin-top:14px;
 }
 
-#code{
-  height:180px;
-}
+#code{height:220px;}
 </style>
 </head>
 
@@ -73,7 +70,7 @@ button{
   <h3>Редактор плеера</h3>
 
   <label>Цвет акцента</label>
-  <input type="color" id="accent" value="#00ff88">
+  <input type="color" id="accent" value="#1db954">
 
   <label>Обложка (URL)</label>
   <input id="cover" value="https://picsum.photos/300">
@@ -82,45 +79,60 @@ button{
   <textarea id="tracks">
 https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
 https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3
+https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3
   </textarea>
 
   <button onclick="generate()">Получить код</button>
-
-  <textarea id="code" placeholder="Здесь появится код для Genially"></textarea>
+  <textarea id="code" placeholder="Код для Genially"></textarea>
 </div>
 
 <div id="preview"></div>
 
 <script>
-function generate(){
-  const accent = document.getElementById("accent").value;
-  const cover  = document.getElementById("cover").value;
-  const tracks = document.getElementById("tracks").value
-    .trim().split("\n").filter(Boolean);
+function filename(url){
+  return decodeURIComponent(url.split('/').pop().replace('.mp3',''));
+}
 
-  const playerCode = `
-<div id="GENIALLY_AUDIO"></div>
+function generate(){
+  const accent = accentInput.value;
+  const cover  = coverInput.value;
+  const tracks = tracksInput.value.trim().split("\n").filter(Boolean);
+
+  const code = `
+<div id="GENIALLY_PLAYER"></div>
 
 <style>
-#GENIALLY_AUDIO{
+#GENIALLY_PLAYER{
   --accent:${accent};
-  width:260px;
+  width:280px;
   font-family:Arial,sans-serif;
 }
+
 .gp{
   background:rgba(255,255,255,.08);
-  backdrop-filter:blur(12px);
+  backdrop-filter:blur(14px);
   border-radius:24px;
   padding:16px;
   color:white;
-  text-align:center;
 }
+
 .gp img{
-  width:160px;
-  height:160px;
-  border-radius:20px;
-  object-fit:cover;
+  width:100%;
+  border-radius:16px;
 }
+
+.gp .title{
+  margin-top:10px;
+  font-weight:bold;
+}
+
+.gp .controls{
+  display:flex;
+  justify-content:center;
+  gap:14px;
+  margin:12px 0;
+}
+
 .gp button{
   width:42px;
   height:42px;
@@ -129,54 +141,106 @@ function generate(){
   background:var(--accent);
   cursor:pointer;
 }
-.gp .ctrl{
-  display:flex;
-  justify-content:center;
-  gap:12px;
+
+.gp input[type=range]{width:100%;}
+
+.playlist{
   margin-top:10px;
+  max-height:140px;
+  overflow:auto;
+  border-top:1px solid rgba(255,255,255,.1);
 }
+
+.track{
+  padding:6px;
+  cursor:pointer;
+  font-size:13px;
+  opacity:.75;
+}
+
+.track.active{
+  color:var(--accent);
+  opacity:1;
+}
+
+.track:hover{background:rgba(255,255,255,.08);}
 </style>
 
 <script>
 (function(){
   const tracks=${JSON.stringify(tracks)};
   let i=0;
-  const root=document.getElementById("GENIALLY_AUDIO");
+
+  const root=document.getElementById("GENIALLY_PLAYER");
   root.innerHTML=\`
     <div class="gp">
       <img src="${cover}">
-      <div id="t">Track 1</div>
-      <input type="range" id="s" value="0">
-      <div class="ctrl">
-        <button id="p">▶</button>
-        <button id="n">▶▶</button>
-      </div>
-      <audio id="a"></audio>
-    </div>\`;
-  const a=root.querySelector("#a");
-  const p=root.querySelector("#p");
-  const s=root.querySelector("#s");
+      <div class="title" id="title"></div>
 
-  function load(x){
-    i=x;
-    a.src=tracks[i];
-    root.querySelector("#t").textContent="Track "+(i+1);
+      <input type="range" id="seek" value="0">
+
+      <div class="controls">
+        <button id="prev">◀</button>
+        <button id="play">▶</button>
+        <button id="next">▶▶</button>
+      </div>
+
+      <div class="playlist" id="list"></div>
+      <audio id="audio"></audio>
+    </div>\`;
+
+  const audio=root.querySelector("#audio");
+  const play=root.querySelector("#play");
+  const seek=root.querySelector("#seek");
+  const list=root.querySelector("#list");
+
+  function name(u){return decodeURIComponent(u.split('/').pop().replace('.mp3',''));}
+
+  tracks.forEach((t,idx)=>{
+    const d=document.createElement("div");
+    d.className="track";
+    d.textContent=name(t);
+    d.onclick=()=>load(idx,true);
+    list.appendChild(d);
+  });
+
+  function highlight(){
+    [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
   }
+
+  function load(x,auto){
+    i=x;
+    audio.src=tracks[i];
+    title.textContent=name(tracks[i]);
+    highlight();
+    if(auto) audio.play();
+  }
+
   load(0);
 
-  p.onclick=()=>a.paused?a.play():a.pause();
-  a.onplay=()=>p.textContent="❚❚";
-  a.onpause=()=>p.textContent="▶";
-  a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
-  s.oninput=()=>a.currentTime=a.duration*s.value/100;
-  root.querySelector("#n").onclick=()=>load((i+1)%tracks.length);
+  play.onclick=()=>audio.paused?audio.play():audio.pause();
+  audio.onplay=()=>play.textContent="❚❚";
+  audio.onpause=()=>play.textContent="▶";
+
+  audio.ontimeupdate=()=>seek.value=audio.currentTime/audio.duration*100||0;
+  seek.oninput=()=>audio.currentTime=audio.duration*seek.value/100;
+
+  audio.onended=()=>load((i+1)%tracks.length,true);
+  prev.onclick=()=>load((i-1+tracks.length)%tracks.length,true);
+  next.onclick=()=>load((i+1)%tracks.length,true);
 })();
 <\/script>
 `;
 
-  document.getElementById("code").value = playerCode;
-  document.getElementById("preview").innerHTML = playerCode;
+  codeBox.value = code;
+  preview.innerHTML = code;
 }
+
+const accentInput = document.getElementById("accent");
+const coverInput  = document.getElementById("cover");
+const tracksInput = document.getElementById("tracks");
+const codeBox     = document.getElementById("code");
+const preview     = document.getElementById("preview");
 
 generate();
 </script>
