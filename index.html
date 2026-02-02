@@ -1,36 +1,127 @@
-<div id="GENIALLY_AUDIO_PLAYER"></div>
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Genially Audio Player Editor</title>
 
 <style>
-#GENIALLY_AUDIO_PLAYER {
-  --accent: #00ff88;
-  width:260px;
+body{
+  margin:0;
   font-family:Arial, sans-serif;
+  background:#0f0f0f;
+  color:#fff;
+  display:flex;
+  height:100vh;
 }
 
-.g-player{
-  background:rgba(255,255,255,0.08);
+#editor{
+  width:360px;
+  padding:16px;
+  background:#151515;
+  box-sizing:border-box;
+  overflow:auto;
+}
+
+#preview{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:transparent;
+}
+
+label{
+  font-size:13px;
+  opacity:.7;
+  display:block;
+  margin-top:14px;
+}
+
+input, textarea, select, button{
+  width:100%;
+  margin-top:6px;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+  box-sizing:border-box;
+}
+
+textarea{
+  height:120px;
+  background:#000;
+  color:#00ff88;
+  font-size:12px;
+}
+
+button{
+  background:#00ff88;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+  margin-top:14px;
+}
+
+#code{
+  height:180px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="editor">
+  <h3>Редактор плеера</h3>
+
+  <label>Цвет акцента</label>
+  <input type="color" id="accent" value="#00ff88">
+
+  <label>Обложка (URL)</label>
+  <input id="cover" value="https://picsum.photos/300">
+
+  <label>MP3 / GitHub raw ссылки (1 в строке)</label>
+  <textarea id="tracks">
+https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
+https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3
+  </textarea>
+
+  <button onclick="generate()">Получить код</button>
+
+  <textarea id="code" placeholder="Здесь появится код для Genially"></textarea>
+</div>
+
+<div id="preview"></div>
+
+<script>
+function generate(){
+  const accent = document.getElementById("accent").value;
+  const cover  = document.getElementById("cover").value;
+  const tracks = document.getElementById("tracks").value
+    .trim().split("\n").filter(Boolean);
+
+  const playerCode = `
+<div id="GENIALLY_AUDIO"></div>
+
+<style>
+#GENIALLY_AUDIO{
+  --accent:${accent};
+  width:260px;
+  font-family:Arial,sans-serif;
+}
+.gp{
+  background:rgba(255,255,255,.08);
   backdrop-filter:blur(12px);
   border-radius:24px;
   padding:16px;
-  text-align:center;
   color:white;
+  text-align:center;
 }
-
-.g-player img{
+.gp img{
   width:160px;
   height:160px;
   border-radius:20px;
   object-fit:cover;
 }
-
-.g-controls{
-  display:flex;
-  justify-content:center;
-  gap:14px;
-  margin-top:12px;
-}
-
-.g-controls button{
+.gp button{
   width:42px;
   height:42px;
   border-radius:50%;
@@ -38,80 +129,57 @@
   background:var(--accent);
   cursor:pointer;
 }
-
-.g-progress{width:100%;}
-.g-time{
+.gp .ctrl{
   display:flex;
-  justify-content:space-between;
-  font-size:12px;
-  opacity:.6;
+  justify-content:center;
+  gap:12px;
+  margin-top:10px;
 }
 </style>
 
 <script>
 (function(){
-  const tracks = [
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-    "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3"
-  ];
-
-  let index = 0;
-  const root = document.getElementById("GENIALLY_AUDIO_PLAYER");
-
-  root.innerHTML = `
-    <div class="g-player">
-      <img src="https://picsum.photos/300" id="cover">
-      <div id="title">Track 1</div>
-
-      <input type="range" class="g-progress" id="seek" value="0">
-
-      <div class="g-time">
-        <span id="cur">0:00</span>
-        <span id="dur">0:00</span>
+  const tracks=${JSON.stringify(tracks)};
+  let i=0;
+  const root=document.getElementById("GENIALLY_AUDIO");
+  root.innerHTML=\`
+    <div class="gp">
+      <img src="${cover}">
+      <div id="t">Track 1</div>
+      <input type="range" id="s" value="0">
+      <div class="ctrl">
+        <button id="p">▶</button>
+        <button id="n">▶▶</button>
       </div>
+      <audio id="a"></audio>
+    </div>\`;
+  const a=root.querySelector("#a");
+  const p=root.querySelector("#p");
+  const s=root.querySelector("#s");
 
-      <div class="g-controls">
-        <button id="prev">◀</button>
-        <button id="play">▶</button>
-        <button id="next">▶▶</button>
-      </div>
-
-      <audio id="audio"></audio>
-    </div>
-  `;
-
-  const audio = root.querySelector("#audio");
-  const play = root.querySelector("#play");
-  const seek = root.querySelector("#seek");
-
-  function load(i){
-    index = i;
-    audio.src = tracks[i];
-    root.querySelector("#title").textContent = "Track " + (i+1);
+  function load(x){
+    i=x;
+    a.src=tracks[i];
+    root.querySelector("#t").textContent="Track "+(i+1);
   }
-
   load(0);
 
-  play.onclick = () => audio.paused ? audio.play() : audio.pause();
-  audio.onplay = () => play.textContent = "❚❚";
-  audio.onpause = () => play.textContent = "▶";
-
-  audio.ontimeupdate = () => {
-    seek.value = audio.currentTime / audio.duration * 100 || 0;
-    root.querySelector("#cur").textContent =
-      Math.floor(audio.currentTime/60)+":"+("0"+Math.floor(audio.currentTime%60)).slice(-2);
-    root.querySelector("#dur").textContent =
-      Math.floor(audio.duration/60)+":"+("0"+Math.floor(audio.duration%60)).slice(-2);
-  };
-
-  seek.oninput = () =>
-    audio.currentTime = audio.duration * seek.value / 100;
-
-  root.querySelector("#prev").onclick =
-    () => load((index-1+tracks.length)%tracks.length);
-
-  root.querySelector("#next").onclick =
-    () => load((index+1)%tracks.length);
-
+  p.onclick=()=>a.paused?a.play():a.pause();
+  a.onplay=()=>p.textContent="❚❚";
+  a.onpause=()=>p.textContent="▶";
+  a.ontimeupdate=()=>s.value=a.currentTime/a.duration*100||0;
+  s.oninput=()=>a.currentTime=a.duration*s.value/100;
+  root.querySelector("#n").onclick=()=>load((i+1)%tracks.length);
 })();
+<\/script>
+`;
+
+  document.getElementById("code").value = playerCode;
+  document.getElementById("preview").innerHTML = playerCode;
+}
+
+generate();
 </script>
+
+</body>
+</html>
