@@ -7,8 +7,8 @@
 <style>
 body{
   margin:0;
-  font-family:Arial,sans-serif;
-  background:#0e0e0e;
+  font-family:Arial, sans-serif;
+  background:#111;
   color:#fff;
   display:flex;
   height:100vh;
@@ -17,7 +17,7 @@ body{
 #editor{
   width:360px;
   padding:16px;
-  background:#141414;
+  background:#1a1a1a;
   box-sizing:border-box;
 }
 
@@ -28,19 +28,40 @@ body{
   justify-content:center;
 }
 
-label{margin-top:12px;display:block;font-size:13px;opacity:.7}
-input,textarea,button{
-  width:100%;margin-top:6px;padding:8px;
-  border-radius:8px;border:none;
+label{
+  display:block;
+  margin-top:12px;
+  font-size:13px;
+  opacity:.7;
 }
+
+input, select, textarea, button{
+  width:100%;
+  margin-top:6px;
+  padding:8px;
+  border-radius:8px;
+  border:none;
+  box-sizing:border-box;
+}
+
 textarea{
-  height:120px;background:#000;color:#00ff88;font-size:12px
+  height:120px;
+  background:#000;
+  color:#00ff88;
+  font-size:12px;
 }
+
 button{
-  background:#00ff88;color:#000;font-weight:bold;
-  margin-top:14px;cursor:pointer
+  background:#00ff88;
+  color:#000;
+  font-weight:bold;
+  margin-top:14px;
+  cursor:pointer;
 }
-#code{height:220px}
+
+#code{
+  height:200px;
+}
 </style>
 </head>
 
@@ -52,6 +73,12 @@ button{
   <label>Цвет акцента</label>
   <input type="color" id="accent" value="#1db954">
 
+  <label>Язык</label>
+  <select id="lang">
+    <option value="ru">Русский</option>
+    <option value="en">English</option>
+  </select>
+
   <label>Обложка (URL)</label>
   <input id="cover" value="https://picsum.photos/300">
 
@@ -59,110 +86,106 @@ button{
   <textarea id="tracks">
 https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3
 https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3
-https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3
   </textarea>
 
   <button onclick="update()">Получить код</button>
-  <textarea id="code"></textarea>
+
+  <textarea id="code" placeholder="Код для Genially"></textarea>
 </div>
 
 <div id="preview"></div>
 
 <script>
-function renderPlayer(target, config){
+function renderPlayer(target, cfg){
   target.innerHTML = `
-  <div class="gp" style="--accent:${config.accent}">
-    <img src="${config.cover}">
-    <div class="title">${config.names[0]}</div>
-    <input type="range" class="seek" value="0">
-    <div class="ctrl">
-      <button class="prev">◀</button>
-      <button class="play">▶</button>
-      <button class="next">▶▶</button>
-    </div>
-    <div class="list"></div>
-    <audio></audio>
-  </div>`;
+  <div style="
+    width:260px;
+    background:rgba(255,255,255,.08);
+    backdrop-filter:blur(12px);
+    border-radius:20px;
+    padding:16px;
+    text-align:center;
+    font-family:Arial;
+    color:white;
+  ">
+    <img src="${cfg.cover}" style="width:160px;height:160px;border-radius:16px;object-fit:cover">
+    <div style="margin-top:8px;font-weight:bold" id="title"></div>
 
-  const a = target.querySelector("audio");
-  const play = target.querySelector(".play");
-  const seek = target.querySelector(".seek");
-  const title = target.querySelector(".title");
-  const list = target.querySelector(".list");
+    <input type="range" id="seek" value="0" style="width:100%">
+
+    <div style="margin-top:10px">
+      <button id="prev">◀</button>
+      <button id="play">▶</button>
+      <button id="next">▶▶</button>
+    </div>
+
+    <div id="list" style="margin-top:10px;font-size:12px;text-align:left"></div>
+
+    <audio id="audio"></audio>
+  </div>
+  `;
+
+  const audio = target.querySelector("#audio");
+  const title = target.querySelector("#title");
+  const seek  = target.querySelector("#seek");
+  const play  = target.querySelector("#play");
+  const list  = target.querySelector("#list");
 
   let i = 0;
 
-  function load(x,auto){
-    i=x;
-    a.src=config.tracks[i];
-    title.textContent=config.names[i];
-    [...list.children].forEach((e,n)=>e.classList.toggle("active",n===i));
-    if(auto) a.play();
+  function name(u){
+    return decodeURIComponent(u.split("/").pop().replace(".mp3",""));
   }
 
-  config.names.forEach((n,idx)=>{
-    const d=document.createElement("div");
-    d.textContent=n;
+  function load(x, auto){
+    i = x;
+    audio.src = cfg.tracks[i];
+    title.textContent = name(cfg.tracks[i]);
+    [...list.children].forEach((e,n)=>e.style.color=n===i?cfg.accent:"#ccc");
+    if(auto) audio.play();
+  }
+
+  cfg.tracks.forEach((t,idx)=>{
+    const d = document.createElement("div");
+    d.textContent = name(t);
+    d.style.cursor="pointer";
     d.onclick=()=>load(idx,true);
     list.appendChild(d);
   });
 
   load(0);
 
-  play.onclick=()=>a.paused?a.play():a.pause();
-  a.onplay=()=>play.textContent="❚❚";
-  a.onpause=()=>play.textContent="▶";
-  a.ontimeupdate=()=>seek.value=a.currentTime/a.duration*100||0;
-  seek.oninput=()=>a.currentTime=a.duration*seek.value/100;
-  target.querySelector(".next").onclick=()=>load((i+1)%config.tracks.length,true);
-  target.querySelector(".prev").onclick=()=>load((i-1+config.tracks.length)%config.tracks.length,true);
+  play.onclick=()=>audio.paused?audio.play():audio.pause();
+  audio.onplay=()=>play.textContent="❚❚";
+  audio.onpause=()=>play.textContent="▶";
+  audio.ontimeupdate=()=>seek.value=audio.currentTime/audio.duration*100||0;
+  seek.oninput=()=>audio.currentTime=audio.duration*seek.value/100;
+
+  target.querySelector("#prev").onclick=()=>load((i-1+cfg.tracks.length)%cfg.tracks.length,true);
+  target.querySelector("#next").onclick=()=>load((i+1)%cfg.tracks.length,true);
 }
 
 function update(){
-  const accent = accentInput.value;
-  const cover = coverInput.value;
-  const tracks = tracksInput.value.trim().split("\n").filter(Boolean);
-  const names = tracks.map(t=>decodeURIComponent(t.split("/").pop().replace(".mp3","")));
+  const cfg = {
+    accent: accent.value,
+    cover: cover.value,
+    tracks: tracks.value.trim().split("\n").filter(Boolean),
+  };
 
-  preview.innerHTML = `
-<style>
-.gp{
-  width:280px;
-  background:rgba(255,255,255,.08);
-  backdrop-filter:blur(14px);
-  border-radius:24px;
-  padding:16px;
-  color:white;
-  font-family:Arial;
-}
-.gp img{width:100%;border-radius:16px}
-.ctrl{display:flex;justify-content:center;gap:12px;margin:10px 0}
-.gp button{
-  width:42px;height:42px;border-radius:50%;
-  border:none;background:var(--accent);cursor:pointer
-}
-.list{max-height:140px;overflow:auto}
-.list div{padding:6px;cursor:pointer;opacity:.7}
-.list div.active{color:var(--accent);opacity:1}
-</style>
-<div id="P"></div>`;
+  renderPlayer(preview, cfg);
 
-  renderPlayer(
-    document.getElementById("P"),
-    {accent,cover,tracks,names}
-  );
-
-  code.value = `<!-- КОД ДЛЯ GENIALLY -->
-<div id="GENIALLY_PLAYER"></div>
-<style>/* styles here */</style>
-<script>/* self-contained JS here */</script>`;
+  code.value =
+`<div id="GENIALLY_AUDIO"></div>
+<script>
+(${renderPlayer.toString()})(document.getElementById("GENIALLY_AUDIO"), ${JSON.stringify(cfg)});
+<\/script>`;
 }
 
-const accentInput=document.getElementById("accent");
-const coverInput=document.getElementById("cover");
-const tracksInput=document.getElementById("tracks");
-const preview=document.getElementById("preview");
-const code=document.getElementById("code");
+const accent = document.getElementById("accent");
+const cover  = document.getElementById("cover");
+const tracks = document.getElementById("tracks");
+const preview= document.getElementById("preview");
+const code   = document.getElementById("code");
 
 update();
 </script>
